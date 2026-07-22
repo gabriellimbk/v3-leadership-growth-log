@@ -2,7 +2,6 @@ import { supabase } from '../supabase';
 import { FormConfig, Submission, TeacherEntry } from '../types';
 
 const SUBMISSIONS_TABLE = 'V3-LEADERSHIP-PROGRAMME-GROWTH-LOG';
-const TEACHERS_TABLE = 'teachers';
 
 const DEFAULT_CONFIG: FormConfig = {
   id: 'default',
@@ -124,25 +123,29 @@ function rowToSubmission(row: any): Submission {
 export const storageService = {
   getConfig: async (): Promise<FormConfig> => {
     const { data } = await supabase
-      .from('form_config')
+      .from(SUBMISSIONS_TABLE)
       .select('config')
-      .eq('id', 'default')
+      .eq('record_type', 'form_config')
+      .eq('record_key', 'config:default')
       .maybeSingle();
     return normalizeConfig(data?.config);
   },
 
   saveConfig: async (config: FormConfig): Promise<void> => {
-    await supabase.from('form_config').upsert({
-      id: 'default',
+    const { error } = await supabase.from(SUBMISSIONS_TABLE).upsert({
+      record_type: 'form_config',
+      record_key: 'config:default',
       config: normalizeConfig(config),
       updated_at: new Date().toISOString()
-    });
+    }, { onConflict: 'record_key' });
+    if (error) throw error;
   },
 
   getSubmissions: async (): Promise<Submission[]> => {
     const { data } = await supabase
       .from(SUBMISSIONS_TABLE)
       .select('*')
+      .eq('record_type', 'submission')
       .order('updated_at', { ascending: false });
     return (data ?? []).map(rowToSubmission);
   },
@@ -151,6 +154,7 @@ export const storageService = {
     const { data } = await supabase
       .from(SUBMISSIONS_TABLE)
       .select('*')
+      .eq('record_type', 'submission')
       .eq('teacher_id', teacherId)
       .order('updated_at', { ascending: false });
     return (data ?? []).map(rowToSubmission);
@@ -160,6 +164,7 @@ export const storageService = {
     const { data } = await supabase
       .from(SUBMISSIONS_TABLE)
       .select('*')
+      .eq('record_type', 'submission')
       .eq('student_uid', uid)
       .maybeSingle();
     return data ? rowToSubmission(data) : null;
@@ -169,6 +174,7 @@ export const storageService = {
     const { data, error } = await supabase
       .from(SUBMISSIONS_TABLE)
       .upsert({
+        record_type: 'submission',
         student_uid: submission.studentUid,
         student_email: submission.studentEmail,
         student_name: submission.studentName,
@@ -188,6 +194,7 @@ export const storageService = {
     const { error } = await supabase
       .from(SUBMISSIONS_TABLE)
       .delete()
+      .eq('record_type', 'submission')
       .eq('student_uid', studentUid);
     if (error) throw error;
   },
@@ -196,14 +203,16 @@ export const storageService = {
     const { error } = await supabase
       .from(SUBMISSIONS_TABLE)
       .delete()
+      .eq('record_type', 'submission')
       .eq('teacher_id', teacherId);
     if (error) throw error;
   },
 
   getTeachers: async (): Promise<TeacherEntry[]> => {
     const { data, error } = await supabase
-      .from(TEACHERS_TABLE)
+      .from(SUBMISSIONS_TABLE)
       .select('id, name, email')
+      .eq('record_type', 'teacher')
       .order('name', { ascending: true });
     if (error) throw error;
     return (data ?? []) as TeacherEntry[];
@@ -211,8 +220,8 @@ export const storageService = {
 
   addTeacher: async (name: string, email: string): Promise<TeacherEntry> => {
     const { data, error } = await supabase
-      .from(TEACHERS_TABLE)
-      .insert({ name: name.trim(), email: email.trim().toLowerCase() })
+      .from(SUBMISSIONS_TABLE)
+      .insert({ record_type: 'teacher', name: name.trim(), email: email.trim().toLowerCase() })
       .select('id, name, email')
       .single();
     if (error) throw error;
@@ -221,8 +230,9 @@ export const storageService = {
 
   updateTeacher: async (id: string, name: string, email: string): Promise<TeacherEntry> => {
     const { data, error } = await supabase
-      .from(TEACHERS_TABLE)
+      .from(SUBMISSIONS_TABLE)
       .update({ name: name.trim(), email: email.trim().toLowerCase() })
+      .eq('record_type', 'teacher')
       .eq('id', id)
       .select('id, name, email')
       .single();
@@ -232,8 +242,9 @@ export const storageService = {
 
   deleteTeacher: async (id: string): Promise<void> => {
     const { error } = await supabase
-      .from(TEACHERS_TABLE)
+      .from(SUBMISSIONS_TABLE)
       .delete()
+      .eq('record_type', 'teacher')
       .eq('id', id);
     if (error) throw error;
   },
