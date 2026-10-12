@@ -5,6 +5,10 @@ const SUBMISSIONS_TABLE = 'V3-LEADERSHIP-PROGRAMME-GROWTH-LOG';
 
 const DEFAULT_CONFIG: FormConfig = {
   id: 'default',
+  sections1To4Title: "PLACEHOLDER TITLE",
+  sections1To4TitleEnabled: true,
+  afterSection4Title: "PLACEHOLDER TITLE",
+  afterSection4TitleEnabled: true,
   title: "PA CCA Student Growth Log – Goal Setting",
   section1: {
     enabled: true,
